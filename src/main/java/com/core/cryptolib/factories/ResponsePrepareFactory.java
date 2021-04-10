@@ -2,11 +2,9 @@ package com.core.cryptolib.factories;
 
 import com.core.cryptolib.TelegramLoggerService;
 import org.json.simple.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
 
 public class ResponsePrepareFactory extends JSONObject {
     

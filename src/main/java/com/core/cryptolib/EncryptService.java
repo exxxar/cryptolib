@@ -12,7 +12,6 @@ import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Random;
 import javax.crypto.spec.DESKeySpec;
-import org.springframework.stereotype.Component;
 
 public class EncryptService {
 

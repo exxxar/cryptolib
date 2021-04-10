@@ -78,4 +78,14 @@ public class TransferDataForm {
         return Base64.getEncoder().encodeToString(toJSON().toJSONString().getBytes());
     }
 
+    public JSONObject toSimpleJSON() {
+        JSONObject obj = new JSONObject();
+        obj.put("type", type);
+        return obj;
+    }
+
+    public String toBase64SimpleJSON() {
+        return Base64.getEncoder().encodeToString(toSimpleJSON().toJSONString().getBytes());
+    }
+
 }

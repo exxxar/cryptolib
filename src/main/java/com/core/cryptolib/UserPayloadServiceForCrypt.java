@@ -1,6 +1,7 @@
 package com.core.cryptolib;
 
 import com.core.cryptolib.enums.InfoRequestType;
+import com.core.cryptolib.forms.ResponseTDPublicIdForm;
 import com.core.cryptolib.forms.TransferDataForm;
 import com.core.cryptolib.forms.TrustedDeviceForm;
 
@@ -47,10 +48,10 @@ public class UserPayloadServiceForCrypt {
 //       byte[] senderDeviceNewKey = EncryptService.getSecureRandom(8);
 //
 //        byte[] recipientDeviceNewKey = EncryptService.getSecureRandom(8);
-    public JSONObject twiceEncryptedPermissionBegin(TransferDataForm data) throws ParseException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, UnsupportedEncodingException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException {
+    public ResponseTDPublicIdForm twiceEncryptedPermissionBegin(TransferDataForm data) throws ParseException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, UnsupportedEncodingException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException {
 
         if (data.getType() != InfoRequestType.twiceEncryptedRequest.getValue()) {
-            return denailRequest().toJSON();
+            return null;
         }
 
         JSONParser parser = new JSONParser();
@@ -67,9 +68,10 @@ public class UserPayloadServiceForCrypt {
                         .toString()
                         .getBytes()));
 
-        JSONObject result = new JSONObject();
-        result.put("recipient_trusted_device_public_id", tdRecipientTrustedDevicePublicId);
-        result.put("sender_trusted_device_public_id", tdSenderTrustedDevicePublicId);
+        ResponseTDPublicIdForm result = new ResponseTDPublicIdForm(
+                tdRecipientTrustedDevicePublicId,
+                tdSenderTrustedDevicePublicId);
+
         return result;
 
     }
@@ -216,8 +218,6 @@ public class UserPayloadServiceForCrypt {
 //    tdRepository.save (tdSender);
 //
 //    tdRecipient.setDeviceOldKeyEncode (tdRecipient.getDeviceActualKey
-
-
 //
 //
 //
@@ -233,7 +233,6 @@ public class UserPayloadServiceForCrypt {
 //    tdRecipient.setDeviceActualKeyEncode (recipientDeviceNewKey);
 //
 //    tdRepository.save (tdRecipient);
-
     public TransferDataForm denailRequest() throws UnsupportedEncodingException {
 
         TransferDataForm tdf = new TransferDataForm();

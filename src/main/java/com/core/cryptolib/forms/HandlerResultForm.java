@@ -18,7 +18,8 @@ public class HandlerResultForm {
     public HandlerResultForm(TransferForm incoming) {
         this.incomingTransfer = incoming;
         this.data = "";
-        this.outgoingTransfer = null;
+        this.outgoingTransfer = null;        this.outgoingTransfer = null;
+
     }
 
     public TransferForm getIncomingForm() {

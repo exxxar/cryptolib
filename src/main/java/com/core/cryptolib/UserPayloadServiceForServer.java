@@ -1,5 +1,6 @@
 package com.core.cryptolib;
 
+import com.core.cryptolib.components.Settings;
 import com.core.cryptolib.enums.InfoRequestType;
 import com.core.cryptolib.factories.RequestPrepareFactory;
 import com.core.cryptolib.forms.HandlerResultForm;
@@ -29,7 +30,7 @@ import javax.crypto.SecretKey;
 
 public class UserPayloadServiceForServer {
 
-    JSONObject settings;
+    Settings settings;
 
     RequestPrepareFactory requestPrepareFactory;
 
@@ -37,14 +38,14 @@ public class UserPayloadServiceForServer {
 
     TelegramLoggerService logger;
 
-    public UserPayloadServiceForServer(JSONObject settings) {
+    public UserPayloadServiceForServer(Settings settings) {
         this.settings = settings;
 
-        if (settings.containsKey("telegram_logger_token")
-                && settings.containsKey("telegram_logger_token")) {
-            String channel = (String) settings.get("telegram_logger_channel");
-            String token = (String) settings.get("telegram_logger_token");
-            boolean isDeubg = Boolean.parseBoolean((String) settings.get("telegram_logger_debug"));
+        if (settings.isExist("telegram_logger_token")
+                && settings.isExist("telegram_logger_token")) {
+            String channel = (String) settings.get("telegram_logger_channel").getValue();
+            String token = (String) settings.get("telegram_logger_token").getValue();
+            boolean isDeubg = Boolean.parseBoolean((String) settings.get("telegram_logger_debug").getValue());
 
             this.logger = new TelegramLoggerService(channel, token,
                     "Server",
@@ -58,7 +59,7 @@ public class UserPayloadServiceForServer {
 
     }
 
-    public JSONObject getSettings() {
+    public Settings getSettings() {
         return this.settings;
     }
 
@@ -208,7 +209,7 @@ public class UserPayloadServiceForServer {
         JSONParser parser = new JSONParser();
         JSONObject resultDecryptedJSON = (JSONObject) parser.parse(new String(decryptedData));
 
-        settings.put("serverTrustedDeviceOldKey", settings.get("serverTrustedDeviceActualKey"));
+        settings.put("serverTrustedDeviceOldKey", settings.get("serverTrustedDeviceActualKey").getValue());
         settings.put("serverTrustedDeviceActualKey", (String) resultDecryptedJSON.get("recipientTrustedDeviceActualKey"));
 
         settings.put("senderTrustedDevicePublicId", (String) resultDecryptedJSON.get("senderTrustedDevicePublicId"));
@@ -235,7 +236,7 @@ public class UserPayloadServiceForServer {
 
     public TransferDataForm dataRequest(TransferDataForm incomingTransferDataForm) throws ParseException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, UnsupportedEncodingException {
 
-        String serverTrustedDeviceActualKey = (String) settings.get("senderTrustedDeviceActualKey");
+        String serverTrustedDeviceActualKey = (String) settings.get("senderTrustedDeviceActualKey").getValue();
 
         byte[] senderTrustedDeviceActualKey = Base64.getDecoder().decode(serverTrustedDeviceActualKey.getBytes());
 
@@ -282,7 +283,7 @@ public class UserPayloadServiceForServer {
         }
 
         byte[] senderTrustedDeviceActualKey = Base64.getDecoder().decode(
-                (String) settings.get("senderTrustedDeviceActualKey")
+                (String) settings.get("senderTrustedDeviceActualKey").getValue()
         );
 
         JSONObject forEncryptJSON = new JSONObject();
@@ -313,20 +314,24 @@ public class UserPayloadServiceForServer {
     public HandlerResultForm handler(TransferForm transfer) throws ParseException, UnsupportedEncodingException, NoSuchAlgorithmException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeySpecException, IOException {
 
         String ownTrustedDevicePrivateId = (String) settings
-                .get("serverTrustedDevicePrivateId");
+                .get("serverTrustedDevicePrivateId")
+                .getValue();
 
         String ownTrustedDeviceActualKey = (String) settings
-                .get("serverTrustedDeviceActualKey");
+                .get("serverTrustedDeviceActualKey")
+                .getValue();
 
         String ownTrustedDevicePublicId = (String) settings
-                .get("serverTrustedDevicePublicId");
+                .get("serverTrustedDevicePublicId")
+                .getValue();
 
         String cryptograpicURL = ((String) settings
-                .get("serverToCryptograpicUrl"))
+                .get("serverToCryptograpicUrl").getValue())
                 .concat("/trusted_devices/reencrypt");
 
         String serverUserId = (String) settings
-                .get("serverUserId");
+                .get("serverUserId")
+                .getValue();
 
         HandlerResultForm result = new HandlerResultForm(transfer);
 

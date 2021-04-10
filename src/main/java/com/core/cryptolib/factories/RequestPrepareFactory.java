@@ -6,6 +6,7 @@
 package com.core.cryptolib.factories;
 
 
+import com.core.cryptolib.components.Settings;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -26,9 +27,9 @@ import org.json.simple.parser.ParseException;
  */
 public class RequestPrepareFactory extends JSONObject {
 
-    JSONObject settings;
+    Settings settings;
 
-    public RequestPrepareFactory(JSONObject settings) {
+    public RequestPrepareFactory(Settings settings) {
         this.settings = settings;
     }
 
@@ -36,10 +37,10 @@ public class RequestPrepareFactory extends JSONObject {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json; utf-8");
 
-        if (settings.containsKey("serverOauthToken")) {
+        if (settings.isExist("serverOauthToken")) {
 
-            boolean needOauth = Boolean.parseBoolean((String) settings.get("serverNeedOauth"));
-            String token = (String) settings.get("serverOauthToken");
+            boolean needOauth = Boolean.parseBoolean((String) settings.get("serverNeedOauth").getValue());
+            String token = (String) settings.get("serverOauthToken").getValue();
 
             if (needOauth) {
                 headers.put("Authorization", "Bearer " + token);
@@ -60,10 +61,10 @@ public class RequestPrepareFactory extends JSONObject {
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json; utf-8");
-        if (settings.containsKey("serverOauthToken")) {
+        if (settings.isExist("serverOauthToken")) {
 
-            boolean needOauth = Boolean.parseBoolean((String) settings.get("serverNeedOauth"));
-            String token = (String) settings.get("serverOauthToken");
+            boolean needOauth = Boolean.parseBoolean((String) settings.get("serverNeedOauth").getValue());
+            String token = (String) settings.get("serverOauthToken").getValue();
 
             if (needOauth) {
                 headers.put("Authorization", "Bearer " + token);
@@ -84,10 +85,10 @@ public class RequestPrepareFactory extends JSONObject {
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json; utf-8");
-        if (settings.containsKey("serverOauthToken")) {
+        if (settings.isExist("serverOauthToken")) {
 
-            boolean needOauth = Boolean.parseBoolean((String) settings.get("serverNeedOauth"));
-            String token = (String) settings.get("serverOauthToken");
+            boolean needOauth = Boolean.parseBoolean((String) settings.get("serverNeedOauth").getValue());
+            String token = (String) settings.get("serverOauthToken").getValue();
 
             if (needOauth) {
                 headers.put("Authorization", "Bearer " + token);
