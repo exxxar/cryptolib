@@ -17,15 +17,15 @@ import org.springframework.scheduling.annotation.Async;
  */
 public class TelegramLoggerService {
 
-    private final String channel;
+    protected String channel;
 
-    private final String token;
+    protected String token;
 
-    private final String appName;
+    protected String appName;
 
-    private String className;
-    
-    boolean isDebug;
+    protected String className;
+
+    protected boolean isDebug;
 
     public void setClassName(String className) {
         this.className = className;
@@ -42,9 +42,10 @@ public class TelegramLoggerService {
     @Async
     public SendResponse info(String message) {
 
-        if (!this.isDebug)
+        if (!this.isDebug) {
             return null;
-        
+        }
+
         SendResponse response = null;
         try {
             TelegramBot bot = new TelegramBot(token);

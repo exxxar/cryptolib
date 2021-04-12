@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.core.cryptolib.enums;
+package com.core.cryptolib.forms;
 
 import java.util.Map;
 import javax.validation.constraints.NotNull;

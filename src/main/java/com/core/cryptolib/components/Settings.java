@@ -63,4 +63,14 @@ public class Settings {
         }
 
     }
+
+    public List<SettingObject> getSettings() {
+        return settings;
+    }
+
+    public void setSettings(List<SettingObject> settings) {
+        this.settings = settings;
+    }
+    
+    
 }
