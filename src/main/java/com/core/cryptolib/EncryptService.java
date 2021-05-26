@@ -15,7 +15,6 @@ import javax.crypto.spec.DESKeySpec;
 
 public class EncryptService {
 
-   
     iDesAlgorithm encryptAlgorithm;
 
     public EncryptService() {

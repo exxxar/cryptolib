@@ -39,20 +39,26 @@ public class UserPayloadServiceForServer {
     TelegramLoggerService logger;
 
     public UserPayloadServiceForServer(Settings settings) {
+
+        this.desApp = new EncryptService();
+
         this.settings = settings;
 
-        if (settings.isExist("telegram_logger_token")
-                && settings.isExist("telegram_logger_token")) {
-            String channel = (String) settings.get("telegram_logger_channel").getValue();
-            String token = (String) settings.get("telegram_logger_token").getValue();
-            boolean isDeubg = Boolean.parseBoolean((String) settings.get("telegram_logger_debug").getValue());
+        if (this.settings != null) {
+            if (this.settings.isExist("telegram_logger_token")
+                    && this.settings.isExist("telegram_logger_token")) {
 
-            this.logger = new TelegramLoggerService(channel, token,
-                    "Server",
-                    UserPayloadServiceForServer.class.getName(),
-                    isDeubg
-            );
+                String channel = (String) settings.get("telegram_logger_channel").getValue();
+                String token = (String) settings.get("telegram_logger_token").getValue();
+                boolean isDeubg = Boolean.parseBoolean((String) settings.get("telegram_logger_debug").getValue());
 
+                this.logger = new TelegramLoggerService(channel, token,
+                        "Server",
+                        UserPayloadServiceForServer.class.getName(),
+                        isDeubg
+                );
+
+            }
         }
 
         this.requestPrepareFactory = new RequestPrepareFactory(this.settings);

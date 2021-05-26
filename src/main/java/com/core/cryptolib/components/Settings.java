@@ -5,6 +5,7 @@
  */
 package com.core.cryptolib.components;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -15,10 +16,12 @@ import java.util.function.Consumer;
 public class Settings {
 
     public List<SettingObject> settings;
-
-    public Settings() {
-
+    
+    
+    public Settings(){
+        this.settings = new LinkedList<>();
     }
+
 
     public SettingObject get(String key) {
         SettingObject st = null;
@@ -65,6 +68,7 @@ public class Settings {
     }
 
     public List<SettingObject> getSettings() {
+        System.out.println("size=>"+this.settings.size());
         return settings;
     }
 

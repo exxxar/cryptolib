@@ -18,11 +18,11 @@ public class HashMapConverter implements AttributeConverter<Map<String, Object>,
 
         String customerInfoJson = null;
         ObjectMapper objectMapper = new ObjectMapper();
-        
+
         try {
             customerInfoJson = objectMapper.writeValueAsString(customerInfo);
         } catch (final JsonProcessingException e) {
-        
+
         }
 
         return customerInfoJson;
@@ -36,7 +36,7 @@ public class HashMapConverter implements AttributeConverter<Map<String, Object>,
         try {
             customerInfo = objectMapper.readValue(customerInfoJSON, Map.class);
         } catch (final IOException e) {
-            
+
         }
 
         return customerInfo;
