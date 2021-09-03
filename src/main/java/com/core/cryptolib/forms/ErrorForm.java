@@ -5,6 +5,7 @@
  */
 package com.core.cryptolib.forms;
 
+import java.io.Serializable;
 import java.util.Map;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
@@ -14,7 +15,7 @@ import org.json.simple.JSONObject;
  *
  * @author SAMS
  */
-public class ErrorForm {
+public class ErrorForm implements Serializable {
 
     @NotNull
     private int type;
@@ -23,6 +24,9 @@ public class ErrorForm {
     private JSONObject error;
 
     public ErrorForm() {
+
+        error = null;
+        type = -1;
     }
 
     public ErrorForm(int type, JSONObject error) {

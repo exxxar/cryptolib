@@ -5,6 +5,7 @@
  */
 package com.core.cryptolib.forms;
 
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.Base64;
 import javax.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 
 
-public class InfoRequestForm {
+public class InfoRequestForm implements Serializable{
 
     @NotNull
     private Long id;
@@ -39,6 +40,8 @@ public class InfoRequestForm {
         obj.put("data", data);
         return obj;
     }
+    
+    
 
     public TransferDataForm getDataInTDF() throws ParseException, UnsupportedEncodingException {
 
@@ -73,8 +76,14 @@ public class InfoRequestForm {
         this.recipientUserId = recipientUserId;
         this.data = data;
     }
+    
+    
 
     public InfoRequestForm() {
+         this.id = null;
+        this.senderUserId = null;
+        this.recipientUserId = null;
+        this.data = null;
     }
 
     public Long getId() {

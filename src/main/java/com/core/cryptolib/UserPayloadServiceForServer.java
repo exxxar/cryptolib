@@ -1,8 +1,11 @@
 package com.core.cryptolib;
 
+import com.core.cryptolib.components.ConnectionObject;
+import com.core.cryptolib.components.Connections;
 import com.core.cryptolib.components.Settings;
 import com.core.cryptolib.enums.InfoRequestType;
 import com.core.cryptolib.factories.RequestPrepareFactory;
+import com.core.cryptolib.forms.EncryptedDataForm;
 import com.core.cryptolib.forms.HandlerResultForm;
 import com.core.cryptolib.forms.TransferDataForm;
 import com.core.cryptolib.forms.TransferForm;
@@ -14,7 +17,7 @@ import java.io.UnsupportedEncodingException;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
-
+import org.apache.log4j.Logger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -32,41 +35,50 @@ public class UserPayloadServiceForServer {
 
     Settings settings;
 
+    Connections connections;
+
     RequestPrepareFactory requestPrepareFactory;
 
     EncryptService desApp;
 
-    TelegramLoggerService logger;
+    CryptoLoggerService logger;
 
-    public UserPayloadServiceForServer(Settings settings) {
+    public UserPayloadServiceForServer(Connections connections, Settings settings, CryptoLoggerService logger) {
 
         this.desApp = new EncryptService();
 
         this.settings = settings;
 
+        this.connections = connections;
+
         if (this.settings != null) {
-            if (this.settings.isExist("telegram_logger_token")
-                    && this.settings.isExist("telegram_logger_token")) {
 
-                String channel = (String) settings.get("telegram_logger_channel").getValue();
-                String token = (String) settings.get("telegram_logger_token").getValue();
-                boolean isDeubg = Boolean.parseBoolean((String) settings.get("telegram_logger_debug").getValue());
+            boolean isDebug = Boolean.parseBoolean((String) settings.get("logger_debug").getValue());
 
-                this.logger = new TelegramLoggerService(channel, token,
-                        "Server",
-                        UserPayloadServiceForServer.class.getName(),
-                        isDeubg
-                );
+            this.logger = logger;
 
-            }
+            this.logger.setDebugMode(isDebug);
+
         }
 
         this.requestPrepareFactory = new RequestPrepareFactory(this.settings);
 
     }
 
+    public Connections getConnections() {
+        return this.connections;
+    }
+
+    public void setConnections(Connections connections) {
+        this.connections = connections;
+    }
+
     public Settings getSettings() {
         return this.settings;
+    }
+
+    public void setSettings(Settings settings) {
+        this.settings = settings;
     }
 
     public TransferDataForm getTrustedDevicePublicId(String ownPublicDeviceId) throws ParseException, UnsupportedEncodingException {
@@ -140,7 +152,8 @@ public class UserPayloadServiceForServer {
         data.put("senderTrustedDevicePublicId", (String) restoredData.get("senderTrustedDevicePublicId"));
         data.put("recipientTrustedDevicePublicId", recipientTrustedDevicePublicId);
 
-        logger.info("twiceEncryptedRequest senderTrustedDevicePublicId=>" + (String) restoredData.get("senderTrustedDevicePublicId"));
+        logger.info("twiceEncryptedRequest senderTrustedDevicePublicId",
+                (String) restoredData.get("senderTrustedDevicePublicId"));
 
         byte[] ownActualKey = Base64.getDecoder().decode(
                 recipientTrustedDeviceActualKey
@@ -150,9 +163,11 @@ public class UserPayloadServiceForServer {
         newEncryptObject.put("encryptedDataExchangeRequest", dataEncryptedDataExchangeRequest);
         newEncryptObject.put("trustedDevicePrivateId", recipientTrustedDevicePrivateId);
 
-        logger.info("twiceEncryptedRequest trustedDevicePrivateId=>" + recipientTrustedDevicePrivateId);
+        logger.info("twiceEncryptedRequest trustedDevicePrivateId",
+                recipientTrustedDevicePrivateId);
 
-        logger.info("twiceEncryptedRequest (before) encryptedDataExchangeRequest=>" + dataEncryptedDataExchangeRequest);
+        logger.info("twiceEncryptedRequest (before) encryptedDataExchangeRequest",
+                dataEncryptedDataExchangeRequest);
 
         byte[] resultEncrypt = null;
         try {
@@ -170,15 +185,19 @@ public class UserPayloadServiceForServer {
             System.arraycopy(encryptedSenderData, 0, resultEncrypt, IV.length, encryptedSenderData.length);
 
         } catch (Exception ex) {
-            logger.info("twiceEncryptedRequest exception=>" + ex.getMessage());
+            logger.error("twiceEncryptedRequest exception",
+                    ex.getMessage());
+            return denailRequest();
         }
         data.put("encryptedDataExchangeRequest", Base64
                 .getEncoder()
                 .encodeToString(resultEncrypt));
 
-        logger.info("twiceEncryptedRequest (after) encryptedDataExchangeRequest=>" + Base64
-                .getEncoder()
-                .encodeToString(resultEncrypt));
+        logger.info("twiceEncryptedRequest (after) encryptedDataExchangeRequest=>",
+                Base64
+                        .getEncoder()
+                        .encodeToString(resultEncrypt)
+        );
 
         TransferDataForm outcomingTransferDataForm = new TransferDataForm();
         outcomingTransferDataForm.setType(InfoRequestType.twiceEncryptedRequest.getValue());
@@ -215,13 +234,33 @@ public class UserPayloadServiceForServer {
         JSONParser parser = new JSONParser();
         JSONObject resultDecryptedJSON = (JSONObject) parser.parse(new String(decryptedData));
 
+        ConnectionObject co = connections.get((String) resultDecryptedJSON.get("senderTrustedDevicePublicId"));
+
+        if (co != null) {
+            co.setDeviceOldKey(co.getDeviceActualKey());
+            co.setDeviceActualKey((String) resultDecryptedJSON.get("senderTrustedDeviceActualKey"));
+            co.setMicroserviceOldKey(co.getMicroserviceActualKey());
+            co.setMicroserviceActualKey((String) resultDecryptedJSON.get("recipientTrustedDeviceActualKey"));
+        } else {
+            co = new ConnectionObject(
+                    (String) resultDecryptedJSON.get("senderTrustedDevicePublicId"),
+                    (String) resultDecryptedJSON.get("senderTrustedDeviceActualKey"),
+                    (String) resultDecryptedJSON.get("recipientTrustedDeviceActualKey")
+            );
+        }
+
+        connections.put(co);
+
+        ///для единичного подключения оставляем
         settings.put("serverTrustedDeviceOldKey", settings.get("serverTrustedDeviceActualKey").getValue());
         settings.put("serverTrustedDeviceActualKey", (String) resultDecryptedJSON.get("recipientTrustedDeviceActualKey"));
 
         settings.put("senderTrustedDevicePublicId", (String) resultDecryptedJSON.get("senderTrustedDevicePublicId"));
         settings.put("senderTrustedDeviceActualKey", (String) resultDecryptedJSON.get("senderTrustedDeviceActualKey"));
-
-        logger.info("twiceEncryptedPermission senderTrustedDevicePublicId=>" + (String) resultDecryptedJSON.get("senderTrustedDevicePublicId"));
+        
+        logger.info("twiceEncryptedPermission senderTrustedDevicePublicId",
+                (String) resultDecryptedJSON.get("senderTrustedDevicePublicId")
+        );
 
         incomingTransferDataForm.setType(InfoRequestType.onceEncryptedPermission.getValue());
         incomingTransferDataForm.setDataBase64((String) resultDecryptedJSON.get("encryptedDataExchangePermission"));
@@ -240,62 +279,84 @@ public class UserPayloadServiceForServer {
 
     }
 
-    public TransferDataForm dataRequest(TransferDataForm incomingTransferDataForm) throws ParseException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, UnsupportedEncodingException {
+    public TransferDataForm dataRequest(String devicePublicId, TransferDataForm incomingTransferDataForm) throws ParseException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, UnsupportedEncodingException {
 
-        String serverTrustedDeviceActualKey = (String) settings.get("senderTrustedDeviceActualKey").getValue();
+        try {
+            logger.info("dataRequest");
+            String serverTrustedDeviceActualKey = connections.get(devicePublicId).getDeviceActualKey();
 
-        byte[] senderTrustedDeviceActualKey = Base64.getDecoder().decode(serverTrustedDeviceActualKey.getBytes());
+            logger.info("serverTrustedDeviceActualKey",
+                    serverTrustedDeviceActualKey);
 
-        JSONParser parser = new JSONParser();
-        JSONObject obj = (JSONObject) parser.parse(incomingTransferDataForm.getData());
+            byte[] senderTrustedDeviceActualKey = Base64.getDecoder().decode(serverTrustedDeviceActualKey.getBytes());
 
-        TransferDataForm tdf = new TransferDataForm();
-        tdf.setData((String) obj.get("data"));
+            logger.info("incomingTransferDataForm.getData(new1)",
+                    incomingTransferDataForm.getDataInBase64());
+            logger.info("incomingTransferDataForm.getData(new2)",
+                    incomingTransferDataForm.getData());
 
-        tdf.setType(Integer.parseInt(obj.get("type").toString()));
+            JSONParser parser = new JSONParser();
+            JSONObject obj = (JSONObject) parser.parse(incomingTransferDataForm.getData());
 
-        if (tdf.getType() != InfoRequestType.encryptedData.getValue()) {
+            logger.info("data obj.get",
+                    (String) obj.get("data"));
+
+            TransferDataForm tdf = new TransferDataForm();
+            tdf.setData((String) obj.get("data"));
+
+            logger.info("dataRequest create TransferDataForm");
+            tdf.setType(Integer.parseInt(obj.get("type").toString()));
+
+            if (tdf.getType() != InfoRequestType.encryptedData.getValue()) {
+                return denailRequest();
+            }
+
+            logger.info("dataRequest type==encryptedData" + tdf.getData());
+
+            byte[] d2 = tdf.getDataInBytes();
+            logger.info("dataRequest get TransferDataForm data in bytes");
+            byte[] IV = Arrays.copyOfRange(d2, 0, 8);
+
+            byte[] encoded = Arrays.copyOfRange(d2, 8, d2.length);
+
+            SecretKey key = EncryptService.getKeyFromBytes(senderTrustedDeviceActualKey);
+
+            byte[] decryptedData = desApp.decryptToByte(encoded,
+                    key,
+                    EncryptService.getAlgo(Algorithm.DES.getValue(),
+                            ChipperMode.CBC.getValue(),
+                            DesPaddingMode.PKCS7_PADDING.getValue()),
+                    IV);
+
+            logger.info("dataRequest get success decrypt data", new String(decryptedData));
+            incomingTransferDataForm.setType(InfoRequestType.data.getValue());
+
+            incomingTransferDataForm.setData(new String(decryptedData));
+
+        } catch (UnsupportedEncodingException | NumberFormatException | InvalidAlgorithmParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | ParseException e) {
+            logger.error("dataRequest error decrypt data");
             return denailRequest();
         }
-
-        byte[] d2 = Base64.getDecoder().decode(tdf.getData());
-
-        byte[] IV = Arrays.copyOfRange(d2, 0, 8);
-
-        byte[] encoded = Arrays.copyOfRange(d2, 8, d2.length);
-
-        SecretKey key = EncryptService.getKeyFromBytes(senderTrustedDeviceActualKey);
-
-        byte[] decryptedData = desApp.decryptToByte(encoded,
-                key,
-                EncryptService.getAlgo(Algorithm.DES.getValue(),
-                        ChipperMode.CBC.getValue(),
-                        DesPaddingMode.PKCS7_PADDING.getValue()),
-                IV);
-
-        incomingTransferDataForm.setType(InfoRequestType.data.getValue());
-
-        incomingTransferDataForm.setData(new String(decryptedData));
 
         return incomingTransferDataForm;
     }
 
     public TransferDataForm encryptedDataRequest(
-            String trustedDeviceData,
-            TransferDataForm incomingTransferDataForm) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, UnsupportedEncodingException {
+            String devicePublicId,
+            EncryptedDataForm incomingTransferDataForm) throws ParseException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, UnsupportedEncodingException {
 
         if (incomingTransferDataForm.getType() != InfoRequestType.data.getValue()) {
             return denailRequest();
         }
 
         byte[] senderTrustedDeviceActualKey = Base64.getDecoder().decode(
-                (String) settings.get("senderTrustedDeviceActualKey").getValue()
+                connections.get(devicePublicId).getDeviceActualKey()
         );
 
         JSONObject forEncryptJSON = new JSONObject();
 
-        forEncryptJSON.put("trustedDeviceData", trustedDeviceData);
-        forEncryptJSON.put("userData", incomingTransferDataForm.getDataInBase64());
+        forEncryptJSON.put("trustedDeviceData", incomingTransferDataForm.getTrustedDeviceData());
+        forEncryptJSON.put("userData", incomingTransferDataForm.getUserData());
 
         byte[] IV = desApp.getIV(8);
         SecretKey key = EncryptService.getKeyFromBytes(senderTrustedDeviceActualKey);
@@ -310,22 +371,29 @@ public class UserPayloadServiceForServer {
         System.arraycopy(IV, 0, resultEncrypt, 0, IV.length);
         System.arraycopy(encryptedSenderData, 0, resultEncrypt, IV.length, encryptedSenderData.length);
 
-        incomingTransferDataForm.setType(InfoRequestType.encryptedData.getValue());
+        TransferDataForm outgouingTrnasferDataForm = new TransferDataForm();
+        outgouingTrnasferDataForm.setType(InfoRequestType.encryptedData.getValue());
+        outgouingTrnasferDataForm.setData(resultEncrypt);
 
-        incomingTransferDataForm.setData(resultEncrypt);
-
-        return incomingTransferDataForm;
+        return outgouingTrnasferDataForm;
     }
 
-    public HandlerResultForm handler(TransferForm transfer) throws ParseException, UnsupportedEncodingException, NoSuchAlgorithmException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeySpecException, IOException {
+    public HandlerResultForm handler(String devicePublicId, TransferForm transfer) throws ParseException, UnsupportedEncodingException, NoSuchAlgorithmException, IllegalBlockSizeException, InvalidKeyException, BadPaddingException, NoSuchPaddingException, InvalidAlgorithmParameterException, InvalidKeySpecException, IOException {
+
+        ConnectionObject co = connections.get(devicePublicId);
 
         String ownTrustedDevicePrivateId = (String) settings
                 .get("serverTrustedDevicePrivateId")
                 .getValue();
 
-        String ownTrustedDeviceActualKey = (String) settings
-                .get("serverTrustedDeviceActualKey")
-                .getValue();
+        String ownTrustedDeviceActualKey
+                = co.getMicroserviceActualKey();
+
+        if (ownTrustedDeviceActualKey.isBlank() || ownTrustedDeviceActualKey.isEmpty()) {
+            ownTrustedDeviceActualKey = (String) settings
+                    .get("serverTrustedDeviceActualKey")
+                    .getValue();
+        }
 
         String ownTrustedDevicePublicId = (String) settings
                 .get("serverTrustedDevicePublicId")
@@ -339,31 +407,49 @@ public class UserPayloadServiceForServer {
                 .get("serverUserId")
                 .getValue();
 
+        logger.info(String.format("Handler start!", "ownTrustedDevicePrivateId=%s\nownTrustedDeviceActualKey=%s\nownTrustedDevicePublicId=%s\ncryptograpicURL=%s\nserverUserId=%s ",
+                ownTrustedDevicePrivateId,
+                ownTrustedDeviceActualKey,
+                ownTrustedDevicePublicId,
+                cryptograpicURL,
+                serverUserId
+        ));
+
         HandlerResultForm result = new HandlerResultForm(transfer);
+
+        logger.info("transfer type", "" + transfer.getDataType());
 
         if (transfer.getSenderUserId().equals(serverUserId) && transfer.getDataType() == 8) {
 
+            logger.info("sender_user_id==server_user_id&transfer date type=8");
+
             try {
-                TransferDataForm tdf = dataRequest(transfer.getTransferDataForm());
+                TransferDataForm tdf = dataRequest(devicePublicId, transfer.getTransferDataForm());
 
                 JSONParser parser = new JSONParser();
                 JSONObject obj = (JSONObject) parser.parse(tdf.getData());
 
-                result.setData(new String(Base64.getDecoder().decode((String) obj.get("userData"))));
+                String tmp = new String(Base64.getDecoder().decode((String) obj.get("userData")));
+                result.setData(tmp);
+
+                logger.info("decrypted data=>" + tmp);
                 return result;
-            } catch (Exception ex) {
+            } catch (UnsupportedEncodingException | InvalidAlgorithmParameterException | InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | ParseException ex) {
+                logger.error("try decrypt error", "serverUserId" + serverUserId
+                        + "  transfer data type=>" + transfer.getDataType()
+                        + " exception=>" + ex.getMessage());
                 result.setData(transfer.getData());
                 return result;
             }
         }
 
-        if (transfer.getTransferType() == 1 || !transfer.getRecipientUserId().equals(serverUserId)) {
-
+        if (transfer.getTransferType() == 1 || transfer.getRecipientUserId().equals(serverUserId)) {
+            logger.info("transfer type==1||transfer recipient_user_id==server_user_id");
             result.setData(transfer.getData());
             return result;
 
         }
-        String data = "";
+        String data = "", payload = "";
 
         transfer.setCreateDateTime(LocalDateTime.now());
         transfer.setStatusType(1);
@@ -371,6 +457,8 @@ public class UserPayloadServiceForServer {
         switch (transfer.getDataType()) {
 
             case 1:
+
+                logger.info("transfer data type = 1");
 
                 TransferDataForm tdf = new TransferDataForm(transfer.getTransferDataForm());
 
@@ -381,7 +469,7 @@ public class UserPayloadServiceForServer {
                         tdf
                 );
 
-                logger.info("Make twiceEncryptedRequest " + tdf.getData());
+                logger.info("Make twiceEncryptedRequest ", tdf.getData());
 
                 TransferForm tf = new TransferForm();
                 tf.setData(tdf.toBase64JSON());
@@ -398,7 +486,7 @@ public class UserPayloadServiceForServer {
                 );
 
                 logger.info(
-                        "Make Cryptographic request " + obj.toJSONString());
+                        "Make Cryptographic request ", obj.toJSONString());
 
                 JSONParser parser = new JSONParser();
                 JSONObject resultData = (JSONObject) parser.parse(new String(Base64
@@ -414,7 +502,7 @@ public class UserPayloadServiceForServer {
                 tdf = twiceEncryptedPermission(ownTrustedDeviceActualKey, tdf);
 
                 logger.info(
-                        "twiceEncryptedPermission=>" + tdf.toJSON().toJSONString());
+                        "twiceEncryptedPermission=>", tdf.toJSON().toJSONString());
 
                 TransferForm responseTransfer = new TransferForm();
 
@@ -428,39 +516,42 @@ public class UserPayloadServiceForServer {
                 result.setOutgoingTransfer(responseTransfer);
 
                 logger.info(
-                        "Save transfers(old)=>" + transfer.toJSON().toJSONString());
+                        "Save transfers(old)", transfer.toJSON().toJSONString());
                 logger.info(
-                        "Save transfers(new)=>" + responseTransfer.toJSON().toJSONString());
+                        "Save transfers(new)", responseTransfer.toJSON().toJSONString());
 
                 break;
             case 6:
-                logger.info("тип 6");
+                logger.info("transfer data type = 6");
                 data = transfer.getTransferDataForm().getData();
-                logger.info("данные=>" + data);
+                logger.info("данные", data);
                 break;
             case 7:
 
-                logger.info("тип 7");
-                data = transfer.getTransferDataForm().getData();
-                logger.info("данные=>" + data);
+                logger.info("transfer data type = 7");
+                payload = transfer.getTransferDataForm().getData();
+                logger.info("данные", data);
                 break;
             case 8:
-                logger.info("тип 8");
-                tdf = dataRequest(transfer.getTransferDataForm());
+                logger.info("transfer data type = 8");
+                tdf = dataRequest(devicePublicId, transfer.getTransferDataForm());
+
+                result.setOutgoingTransfer(transfer);
 
                 parser = new JSONParser();
                 obj = (JSONObject) parser.parse(tdf.getData());
 
-                data = new String(Base64.getDecoder().decode((String) obj.get("userData")));
-
-                logger.info("данные=>" + data);
+                payload = new String(Base64.getDecoder().decode((String) obj.get("userData")));
+                logger.info("данные", data);
                 break;
 
             default:
                 data = "";
+                payload = "";
         }
 
         result.setData(data);
+        result.setPayload(payload);
 
         return result;
 

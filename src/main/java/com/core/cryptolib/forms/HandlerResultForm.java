@@ -5,29 +5,33 @@
  */
 package com.core.cryptolib.forms;
 
+import java.io.Serializable;
 import org.json.simple.JSONObject;
 
 /**
  *
  * @author SAMS
  */
-public class HandlerResultForm {
+public class HandlerResultForm implements Serializable {
 
     TransferForm incomingTransfer;
     TransferForm outgoingTransfer;
     String data;
+    String payload;
 
     public HandlerResultForm(TransferForm incoming) {
         this.incomingTransfer = incoming;
         this.data = "";
-        this.outgoingTransfer = null;
+        this.payload = "";
+        this.outgoingTransfer = new TransferForm();
 
     }
 
     public HandlerResultForm() {
-        this.incomingTransfer = null;
+        this.incomingTransfer = new TransferForm();
         this.data = "";
-        this.outgoingTransfer = null;
+        this.payload = "";
+        this.outgoingTransfer = new TransferForm();
     }
 
     public TransferForm getIncomingForm() {
@@ -50,6 +54,14 @@ public class HandlerResultForm {
         return data;
     }
 
+    public String getPayload() {
+        return payload;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
     public void setData(String data) {
         this.data = data;
     }
@@ -57,6 +69,7 @@ public class HandlerResultForm {
     public JSONObject toJSON() {
         JSONObject tmp = new JSONObject();
         tmp.put("data", data);
+        tmp.put("payload", payload);
         tmp.put("incomingTransfer", incomingTransfer.toJSON());
         tmp.put("outgoingTransfer", outgoingTransfer.toJSON());
 

@@ -5,6 +5,7 @@
  */
 package com.core.cryptolib.forms;
 
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.Base64;
 import org.json.simple.JSONObject;
@@ -13,13 +14,14 @@ import org.json.simple.JSONObject;
  *
  * @author SAMS
  */
-public class TransferDataForm {
+public class TransferDataForm implements Serializable {
 
     private int type;
     private String data;
 
     public TransferDataForm() {
-
+        type = -1;
+        data = null;
     }
 
     public TransferDataForm(TransferDataForm form) {
@@ -30,6 +32,7 @@ public class TransferDataForm {
     public TransferDataForm(int type, String base64data) throws UnsupportedEncodingException {
         this.type = type;
         this.data = Base64.getEncoder().encodeToString(base64data.getBytes());
+
     }
 
     public int getType() {
@@ -45,19 +48,47 @@ public class TransferDataForm {
     }
 
     public byte[] getDataInBytes() throws UnsupportedEncodingException {
-        return Base64.getDecoder().decode(data.getBytes());
+        if (org.apache.commons.codec.binary.Base64.isBase64(data)) {
+            return Base64.getDecoder().decode(data.getBytes());
+        } else {
+            return data.getBytes();
+        }
     }
 
     public String getData() throws UnsupportedEncodingException {
-        return new String(Base64.getDecoder().decode(data.getBytes()));
+        if (data==null)
+            return "";
+        
+        if (org.apache.commons.codec.binary.Base64.isBase64(data)) {
+            return new String(Base64.getDecoder().decode(data.getBytes()));
+        } else {
+            return data;
+        }
+
     }
 
     public void setData(String data) throws UnsupportedEncodingException {
-        this.data = Base64.getEncoder().encodeToString(data.getBytes());;
+        System.out.println("DATA 1.1=>" + data);
+
+        if (org.apache.commons.codec.binary.Base64.isBase64(data)) {
+            this.data = data;
+        } else {
+            this.data = Base64.getEncoder().encodeToString(data.getBytes());
+        }
+
+        System.out.println("DATA 1.2=>" + this.data);
     }
 
     public void setData(byte[] data) {
-        this.data = Base64.getEncoder().encodeToString(data);;
+
+        this.data = new String(data);
+
+        if (org.apache.commons.codec.binary.Base64.isBase64(data)) {
+            this.data = new String(data);
+        } else {
+            this.data = Base64.getEncoder().encodeToString(data);
+        }
+
     }
 
     public void setDataBase64(String base64data) {

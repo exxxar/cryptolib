@@ -5,14 +5,23 @@
  */
 package com.core.cryptolib.forms;
 
+import java.io.Serializable;
+
 /**
  *
  * @author SAMS
  */
-public class ResponseTDPublicIdForm {
+public class ResponseTDPublicIdForm implements Serializable {
 
     String tdRecipientTrustedDevicePublicId;
     String tdSenderTrustedDevicePublicId;
+
+    public ResponseTDPublicIdForm() {
+        tdRecipientTrustedDevicePublicId = null;
+        tdSenderTrustedDevicePublicId = null;
+    }
+    
+    
 
     public ResponseTDPublicIdForm(String tdRecipientTrustedDevicePublicId, String tdSenderTrustedDevicePublicId) {
         this.tdRecipientTrustedDevicePublicId = tdRecipientTrustedDevicePublicId;

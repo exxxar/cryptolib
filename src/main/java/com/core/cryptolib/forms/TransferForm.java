@@ -6,6 +6,7 @@
 package com.core.cryptolib.forms;
 
 import com.core.cryptolib.HashMapConverter;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -19,7 +20,7 @@ import org.json.simple.parser.ParseException;
  *
  * @author SAMS
  */
-public class TransferForm {
+public class TransferForm implements Serializable {
 
     private Long id;
 
@@ -46,7 +47,12 @@ public class TransferForm {
     }
 
     public TransferForm() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        this.id = null;
+        this.senderUserId = null;
+        this.recipientUserId = null;
+        this.data = null;
+        this.createDateTime = null;
+        this.updateDateTime = null;
     }
 
     public Long getId() {
@@ -104,8 +110,8 @@ public class TransferForm {
     public void setUpdateDateTime(LocalDateTime updateDateTime) {
         this.updateDateTime = updateDateTime;
     }
-    
-     public JSONObject toJSON() {
+
+    public JSONObject toJSON() {
         JSONObject tmp = new JSONObject();
         tmp.put("id", id);
         tmp.put("senderUserId", senderUserId);
@@ -117,8 +123,8 @@ public class TransferForm {
 
         return tmp;
     }
-     
-        public TransferDataForm getTransferDataForm() throws UnsupportedEncodingException {
+
+    public TransferDataForm getTransferDataForm() throws UnsupportedEncodingException {
         TransferDataForm transferDataForm = new TransferDataForm();
         transferDataForm.setType(getTransferType());
 
@@ -136,8 +142,7 @@ public class TransferForm {
 
         return transferDataForm;
     }
-        
-        
+
     public int getTransferType() {
         if (getStatus() == null) {
             return -1;

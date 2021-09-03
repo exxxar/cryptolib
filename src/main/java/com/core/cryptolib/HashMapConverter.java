@@ -15,22 +15,31 @@ public class HashMapConverter implements AttributeConverter<Map<String, Object>,
 
     @Override
     public String convertToDatabaseColumn(Map<String, Object> customerInfo) {
-
+ System.out.println("tyet 1");
+        if (customerInfo == null) {
+            return null;
+        }
+ System.out.println("tyet 2");
         String customerInfoJson = null;
         ObjectMapper objectMapper = new ObjectMapper();
-
+ System.out.println("tyet 3");
         try {
             customerInfoJson = objectMapper.writeValueAsString(customerInfo);
         } catch (final JsonProcessingException e) {
 
         }
-
+ System.out.println("tyet 4");
         return customerInfoJson;
     }
 
     @Override
     public Map<String, Object> convertToEntityAttribute(String customerInfoJSON) {
 
+        System.out.println("tyt 1");
+        if (customerInfoJSON == null) {
+            return null;
+        }
+ System.out.println("tyt 2");
         Map<String, Object> customerInfo = null;
         ObjectMapper objectMapper = new ObjectMapper();
         try {
@@ -38,7 +47,7 @@ public class HashMapConverter implements AttributeConverter<Map<String, Object>,
         } catch (final IOException e) {
 
         }
-
+ System.out.println("tyt 3");
         return customerInfo;
     }
 

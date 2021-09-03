@@ -5,14 +5,21 @@
  */
 package com.core.cryptolib.components;
 
+import java.io.Serializable;
+
 /**
  *
  * @author SAMS
  */
-public class SettingObject {
+public class SettingObject implements Serializable {
 
     String key;
     String value;
+    
+    public SettingObject(){
+        this.key = "";
+        this.value = "";
+    }
 
     public SettingObject(String key, String value) {
         this.key = key;

@@ -16,12 +16,10 @@ import java.util.function.Consumer;
 public class Settings {
 
     public List<SettingObject> settings;
-    
-    
-    public Settings(){
+
+    public Settings() {
         this.settings = new LinkedList<>();
     }
-
 
     public SettingObject get(String key) {
         SettingObject st = null;
@@ -68,13 +66,12 @@ public class Settings {
     }
 
     public List<SettingObject> getSettings() {
-        System.out.println("size=>"+this.settings.size());
+
         return settings;
     }
 
     public void setSettings(List<SettingObject> settings) {
         this.settings = settings;
     }
-    
-    
+
 }
