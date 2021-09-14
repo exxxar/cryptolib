@@ -92,66 +92,70 @@ public class UserPayloadServiceForCrypt {
 
     }
 
-    private FirmwareResponseForm firmwareHandler(FirmwareRequestForm firmwareRequestForm) throws FileNotFoundException, IOException {
-        FirmwareOrderEnum tmpEnum = null;
+    private FirmwareResponseForm firmwareHandler(FirmwareRequestForm firmwareRequestForm)  {
+        try {
+            FirmwareOrderEnum tmpEnum = null;
 
-        long fileSize = 0l;
-        long checkSum = 0l;
-        long offset = 0l;
+            long fileSize = 0l;
+            long checkSum = 0l;
+            long offset = 0l;
 
-        int size = 0;
+            int size = 0;
 
-        File file;
+            File file;
 
-        String filePart = "";
+            String filePart = "";
 
-        switch (firmwareRequestForm.getStatus()) {
-            case NOT_READY:
-                tmpEnum = FirmwareOrderEnum.PREPARE_UPLOAD;
-                break;
-            case PREPARE_UPLOAD_FIRMARE:
-            case READY_UPLOAD_FIRMAWARE:
-            case UPLOADING_FIRMWARE:
-                tmpEnum = FirmwareOrderEnum.FILE_PART;
+            switch (firmwareRequestForm.getStatus()) {
+                case NOT_READY:
+                    tmpEnum = FirmwareOrderEnum.PREPARE_UPLOAD;
+                    break;
+                case PREPARE_UPLOAD_FIRMARE:
+                case READY_UPLOAD_FIRMAWARE:
+                case UPLOADING_FIRMWARE:
+                    tmpEnum = FirmwareOrderEnum.FILE_PART;
 
-                file = new File(settings.get("pathFirmware").getValue());
+                    file = new File(settings.get("pathFirmware").getValue());
 
-                fileSize = file.length();
-                checkSum = 0l;
-                offset = firmwareRequestForm.getOffset();
+                    fileSize = file.length();
+                    checkSum = 0l;
+                    offset = firmwareRequestForm.getOffset();
 
-                FileInputStream fis = new FileInputStream(file);
-                BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+                    FileInputStream fis = new FileInputStream(file);
+                    BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 
-                String strLine;
+                    String strLine;
 
-                br.skip(offset);
-                while ((strLine = br.readLine()) != null || size < 1024) {
-                    filePart = filePart
-                            .concat(strLine)
-                            .concat("\r\n");
-                    size += strLine.length();
-                }
+                    br.skip(offset);
+                    while ((strLine = br.readLine()) != null || size < 1024) {
+                        filePart = filePart
+                                .concat(strLine)
+                                .concat("\r\n");
+                        size += strLine.length();
+                    }
 
-                if (firmwareRequestForm.getOffset() == fileSize) {
-                    tmpEnum = FirmwareOrderEnum.CHECKSUM;
+                    if (firmwareRequestForm.getOffset() == fileSize) {
+                        tmpEnum = FirmwareOrderEnum.CHECKSUM;
 
-                    CRC32 fileCRC32 = new CRC32();
-                    fileCRC32.update(fis.readAllBytes());
+                        CRC32 fileCRC32 = new CRC32();
+                        fileCRC32.update(fis.readAllBytes());
 
-                    checkSum = fileCRC32.getValue();
-                }
+                        checkSum = fileCRC32.getValue();
+                    }
 
-                break;
+                    break;
+            }
+
+            FirmwareResponseForm firmwareResponseForm = new FirmwareResponseForm(
+                    tmpEnum,
+                    size,
+                    filePart,
+                    checkSum);
+
+            return firmwareResponseForm;
+        } catch (IOException e) {
+            return new FirmwareResponseForm();
         }
-
-        FirmwareResponseForm firmwareResponseForm = new FirmwareResponseForm(
-                tmpEnum,
-                size,
-                filePart,
-                checkSum);
-
-        return firmwareResponseForm;
     }
 
 //      TrustedDevice tdRecipientOpen = tdRepository.findTrustedDeviceByDevicePublicId(tdRecipientTrustedDevicePublicId);
@@ -416,6 +420,4 @@ public class UserPayloadServiceForCrypt {
         return settings;
     }
 
-    
-    
 }

@@ -22,6 +22,13 @@ public class FirmwareResponseForm {
 
     private long checksum;
 
+    public FirmwareResponseForm() {
+        this.order = null;
+        this.offset = 0;
+        this.filePart = null;
+        this.checksum = 0;
+    }
+
     public FirmwareResponseForm(FirmwareOrderEnum order, long offset, String filePart, long checksum) {
         this.order = order;
         this.offset = offset;
