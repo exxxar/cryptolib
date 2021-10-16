@@ -45,9 +45,12 @@ public class UserPayloadServiceForCrypt {
 
     EncryptService desApp;
 
-    public UserPayloadServiceForCrypt(Settings settings) {
+    CryptoLoggerService logger;
+
+    public UserPayloadServiceForCrypt(Settings settings, CryptoLoggerService logger) {
         this.settings = settings;
         this.desApp = new EncryptService();
+        this.logger = logger;
     }
 
 
@@ -92,8 +95,29 @@ public class UserPayloadServiceForCrypt {
 
     }
 
-    private FirmwareResponseForm firmwareHandler(FirmwareRequestForm firmwareRequestForm)  {
+    private boolean acceptFirmwareUpdate(){
+        if (!settings.isExist("acceptFirmwareUpdate")) {
+            return false;
+        }
+
+        if (!Boolean.parseBoolean(settings.get("acceptFirmwareUpdate").getValue())) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    private FirmwareResponseForm firmwareHandler(FirmwareRequestForm firmwareRequestForm) {
+
+        if (!this.acceptFirmwareUpdate()) {
+            return new FirmwareResponseForm();
+        }
+
+      
+        
         try {
+            logger.info("reencrypt file start");
+
             FirmwareOrderEnum tmpEnum = null;
 
             long fileSize = 0l;
@@ -102,20 +126,23 @@ public class UserPayloadServiceForCrypt {
 
             int size = 0;
 
-            File file;
+            File file = new File(settings.get("pathFirmware").getValue());
+
+            if (!file.exists() || file.isDirectory()) {
+                logger.info("reencrypt not exist!!");
+                return new FirmwareResponseForm();
+            }
 
             String filePart = "";
 
-            switch (firmwareRequestForm.getStatus()) {
-                case NOT_READY:
+            switch ((int) firmwareRequestForm.getStatus()) {
+                case 0:
                     tmpEnum = FirmwareOrderEnum.PREPARE_UPLOAD;
                     break;
-                case PREPARE_UPLOAD_FIRMARE:
-                case READY_UPLOAD_FIRMAWARE:
-                case UPLOADING_FIRMWARE:
+                case 1:
+                case 2:
+                case 3:
                     tmpEnum = FirmwareOrderEnum.FILE_PART;
-
-                    file = new File(settings.get("pathFirmware").getValue());
 
                     fileSize = file.length();
                     checkSum = 0l;
@@ -124,36 +151,57 @@ public class UserPayloadServiceForCrypt {
                     FileInputStream fis = new FileInputStream(file);
                     BufferedReader br = new BufferedReader(new InputStreamReader(fis));
 
-                    String strLine;
-
-                    br.skip(offset);
-                    while ((strLine = br.readLine()) != null || size < 1024) {
-                        filePart = filePart
-                                .concat(strLine)
-                                .concat("\r\n");
-                        size += strLine.length();
-                    }
-
                     if (firmwareRequestForm.getOffset() == fileSize) {
                         tmpEnum = FirmwareOrderEnum.CHECKSUM;
 
+                        file = new File(settings.get("pathFirmware").getValue());
+                        fis = new FileInputStream(file);
+
+                        byte[] f = fis.readAllBytes();
+
                         CRC32 fileCRC32 = new CRC32();
-                        fileCRC32.update(fis.readAllBytes());
+                        fileCRC32.update(f);
 
                         checkSum = fileCRC32.getValue();
+
+                        fis.close();
+                        break;
                     }
+
+                    br.skip(offset);
+
+                    while (true) {
+
+                        int a = br.read();
+
+                        char c = (char) a;
+                        filePart = filePart
+                                .concat("" + c);
+
+                        size += 1;
+
+                        if ((size >= 5120 && a == 10) || (firmwareRequestForm.getOffset() + size == fileSize)) {
+                            break;
+                        }
+
+                    }
+                    br.close();
+                    fis.close();
 
                     break;
             }
 
             FirmwareResponseForm firmwareResponseForm = new FirmwareResponseForm(
                     tmpEnum,
-                    size,
+                    offset,
                     filePart,
                     checkSum);
 
+            logger.info("reencrypt file success" + firmwareResponseForm.toJSON().toJSONString());
+
             return firmwareResponseForm;
         } catch (IOException e) {
+            logger.info("reencrypt file crashed");
             return new FirmwareResponseForm();
         }
     }
@@ -170,9 +218,15 @@ public class UserPayloadServiceForCrypt {
             int maxAttemps
     ) throws UnsupportedEncodingException, InvalidKeyException, InvalidKeySpecException, NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchPaddingException, BadPaddingException, IllegalBlockSizeException, ParseException, IOException {
 
+        boolean isEncryptByResetSenderKey = false;
+        boolean isEncryptByResetRecipientKey = false;
+        
+
         if (tdRecipient == null || tdSender == null) {
             return new TransferDataFormWithDevicesInfo(denailRequest(), tdSender, tdRecipient);
         }
+        
+        boolean isNextStepAfterReset = tdRecipient.isResetTry() || tdSender.isResetTry();
 
         byte[] recipientDeviceActualKey = null,
                 senderDeviceActualKey = null,
@@ -194,9 +248,16 @@ public class UserPayloadServiceForCrypt {
 
         int steps = 0;
 
+        if (tdRecipient.getDeviceActualKey().equals(tdRecipient.getDeviceResetKey())
+                || (isNextStepAfterReset && tdRecipient.isAcceptAutoReset())) {
+            tdRecipient.setDeviceResetKey(Base64.getEncoder().encodeToString(recipientDeviceResetKey));
+            tdRecipient.setAttempts(0);
+            tdRecipient.setResetTry(false);
+        }
+
         while (true) {
 
-            if (tdRecipient.getAttempts() >= maxAttemps || steps == 2) {
+            if (tdRecipient.getAttempts() >= maxAttemps && !tdRecipient.isAcceptAutoReset() || steps == 2) {
                 tdRecipient.setAttempts(tdRecipient.getAttempts() + 1);
                 return new TransferDataFormWithDevicesInfo(denailRequest(), tdSender, tdRecipient);
             }
@@ -230,6 +291,13 @@ public class UserPayloadServiceForCrypt {
             } catch (InvalidAlgorithmParameterException | InvalidKeyException | NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | ParseException e) {
                 steps++;
 
+                if (steps == 2 && tdRecipient.isAcceptAutoReset() && !tdRecipient.isResetTry()) {
+                    tdRecipient.setDeviceOldKey(tdRecipient.getDeviceResetKey());
+                    isEncryptByResetRecipientKey = true;
+                    tdRecipient.setResetTry(true);
+                    break;
+                }
+
                 continue;
             }
 
@@ -237,20 +305,37 @@ public class UserPayloadServiceForCrypt {
         }
 
         //TrustedDevice tdRecipient = tdRepository.findTrustedDeviceByDevicePrivateId(decodedTDPrivateId);
-        if (!tdRecipient.getDevicePrivateId().equals(decodedTDPrivateId)) {
+        if (!tdRecipient.getDevicePrivateId().equals(decodedTDPrivateId) && !isEncryptByResetRecipientKey) {
             return new TransferDataFormWithDevicesInfo(denailRequest(), tdSender, tdRecipient);
         }
 
-        if (resultDecryptedJSON.containsKey("firmware")) {
-            firmwareRequestForm = new FirmwareRequestForm((JSONObject) resultDecryptedJSON.get("firmware"));
-        }
+        logger.info("tdRecipient result json=>" + resultDecryptedJSON.toJSONString());
+//
+//        if (resultDecryptedJSON.containsKey("firmware")) {
+//            firmwareRequestForm = new FirmwareRequestForm((JSONObject) resultDecryptedJSON.get("firmware"));
+//        }
 
         steps = 0;
+
+        if (tdSender.getDeviceActualKey().equals(tdSender.getDeviceResetKey())
+                || (isNextStepAfterReset && tdSender.isAcceptAutoReset())) {
+
+            logger.info("tdSender try1=>" + tdSender.isResetTry());
+
+            tdSender.setDeviceResetKey(Base64.getEncoder().encodeToString(senderDeviceResetKey));
+            tdSender.setAttempts(0);
+            tdSender.setResetTry(false);
+
+            logger.info("tdSender try2=>" + tdSender.isResetTry());
+        }
+
         while (true) {
 
-            if (tdSender.getAttempts() >= maxAttemps || steps == 2) {
+            if (tdSender.getAttempts() >= maxAttemps && !tdSender.isAcceptAutoReset() || steps == 2) {
 
                 tdSender.setAttempts(tdSender.getAttempts() + 1);
+
+                logger.info("tdSender attemps=>" + tdSender.getAttempts());
 
                 return new TransferDataFormWithDevicesInfo(denailRequest(), tdSender, tdRecipient);
             }
@@ -268,6 +353,7 @@ public class UserPayloadServiceForCrypt {
             encoded = Arrays.copyOfRange(d2, 8, d2.length);
 
             bytes = senderDeviceActualKey;
+
             key = EncryptService.getKeyFromBytes(bytes);
 
             try {
@@ -283,20 +369,40 @@ public class UserPayloadServiceForCrypt {
             } catch (InvalidAlgorithmParameterException | InvalidKeyException | NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | NoSuchPaddingException | ParseException e) {
                 steps++;
 
+                logger.info("tdSender (crash) step=>" + steps);
+
+                if (steps == 2 && tdSender.isAcceptAutoReset() && !tdSender.isResetTry()) {
+                    tdSender.setDeviceOldKey(tdSender.getDeviceResetKey());
+                    isEncryptByResetSenderKey = true;
+                    tdSender.setResetTry(true);
+
+                    logger.info("tdSender start attemps=>" + tdSender.getAttempts());
+                    break;
+                }
+
                 continue;
             }
 
             break;
         }
 
-        if (!tdSender.getDevicePrivateId().equals(decodedTDPrivateId)) {
+        logger.info("tdSender after attemps");
+
+        if (!tdSender.getDevicePrivateId().equals(decodedTDPrivateId) && !isEncryptByResetSenderKey) {
             return new TransferDataFormWithDevicesInfo(denailRequest(), tdSender, tdRecipient);
+        }
+
+        logger.info("tdSender result json=>" + resultDecryptedJSON.toJSONString());
+
+        if (resultDecryptedJSON.containsKey("firmware")&&this.acceptFirmwareUpdate()) {
+            firmwareRequestForm = new FirmwareRequestForm((JSONObject) resultDecryptedJSON.get("firmware"));
+
         }
 
         String recipientTrustedDevicePublicId = Base64.getEncoder()
                 .encodeToString(tdRecipient.getDevicePublicId().getBytes()); //DevicePublicId()
         String senderTrustedDeviceNewKey = Base64.getEncoder().encodeToString(senderDeviceNewKey);
-        String senderTrustedDeviceResetKey = Base64.getEncoder().encodeToString(senderDeviceResetKey);
+        String senderTrustedDeviceResetKey = tdSender.getDeviceResetKey();
 
         JSONObject encryptedDataExchangePermission = new JSONObject();
         encryptedDataExchangePermission.put("recipientTrustedDevicePublicId", recipientTrustedDevicePublicId);
@@ -305,19 +411,27 @@ public class UserPayloadServiceForCrypt {
         encryptedDataExchangePermission.put("backwardAlgorithm", 0);
         encryptedDataExchangePermission.put("senderTrustedDeviceResetKey", senderTrustedDeviceResetKey);
 
-        if (firmwareRequestForm != null) {
+        if (firmwareRequestForm != null&&this.acceptFirmwareUpdate()) {
 
             tdSender.setCurrentFirmware(firmwareRequestForm.getVersion());
 
             if (!tdSender.getCurrentFirmware().equals(settings.get("actualFirmware").getValue())) {
-                encryptedDataExchangePermission.put("firmawere", firmwareHandler(firmwareRequestForm).toJSON());
+                encryptedDataExchangePermission.put("firmware", firmwareHandler(firmwareRequestForm).toJSON());
 
             }
 
         }
 
+        logger.info("tdSender encryptedDataExchangePermission json=>" + encryptedDataExchangePermission.toJSONString());
+
         IV = desApp.getIV(8);
-        bytes = senderDeviceActualKey; //??
+
+        bytes = isEncryptByResetSenderKey == false
+                ? senderDeviceActualKey
+                : Base64
+                        .getDecoder()
+                        .decode(tdSender.getDeviceResetKey());
+
         key = EncryptService.getKeyFromBytes(bytes);
 
         byte[] encryptedSenderData = desApp.encryptToByte(encryptedDataExchangePermission
@@ -334,7 +448,7 @@ public class UserPayloadServiceForCrypt {
 
         String eDEP = new String(Base64.getEncoder().encode(resultSender));
         String rTDAK = new String(Base64.getEncoder().encode(recipientDeviceNewKey));
-        String rTDARK = new String(Base64.getEncoder().encode(recipientDeviceResetKey));
+        String rTDARK = tdRecipient.getDeviceResetKey();
         String sTDAK = new String(Base64.getEncoder().encode(senderDeviceNewKey));
         String sTDPId = new String(Base64.getEncoder()
                 .encode(tdSender.getDevicePublicId().getBytes())); //DevicePublicId()
@@ -348,7 +462,7 @@ public class UserPayloadServiceForCrypt {
         objSenderData.put("senderTrustedDevicePublicId", sTDPId);
         objSenderData.put("recipientTrustedDeviceResetKey", rTDARK);
 
-        if (firmwareRequestForm != null) {
+        if (firmwareRequestForm != null&&this.acceptFirmwareUpdate()) {
 
             tdRecipient.setCurrentFirmware(firmwareRequestForm.getVersion());
 
@@ -357,7 +471,17 @@ public class UserPayloadServiceForCrypt {
             }
         }
 
-        SecretKey rKey = EncryptService.getKeyFromBytes(recipientDeviceActualKey);//???
+        logger.info("tdRecipient objSenderData json=>" + objSenderData.toJSONString());
+
+        SecretKey rKey = isEncryptByResetRecipientKey == false
+                ? EncryptService.getKeyFromBytes(recipientDeviceActualKey)
+                : EncryptService.getKeyFromBytes(
+                        Base64
+                                .getDecoder()
+                                .decode(tdRecipient.getDeviceResetKey()
+                                )
+                );
+
         byte[] encryptedRecipientData = desApp.encryptToByte(objSenderData.toJSONString().getBytes(),
                 rKey,
                 EncryptService.getAlgo(Algorithm.DES.getValue(),

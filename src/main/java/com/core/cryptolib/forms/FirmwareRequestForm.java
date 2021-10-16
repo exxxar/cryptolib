@@ -16,21 +16,21 @@ public class FirmwareRequestForm {
     
     private String version;
     
-    private FirmwareStatusEnum status;
+    private long status;
     
     private long offset;
 
     public FirmwareRequestForm(JSONObject object){
         this.version = (String)object.get("version");
-        this.status = Enum.valueOf(FirmwareStatusEnum.class, (String)object.get("status"));
-        this.offset = Long.parseLong((String)object.get("offset"));
+        this.status =   (long)object.get("status");
+        this.offset = (long)object.get("offset");
     }
 
     public String getVersion() {
         return version;
     }
 
-    public FirmwareStatusEnum getStatus() {
+    public long getStatus() {
         return status;
     }
 

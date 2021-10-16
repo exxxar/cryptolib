@@ -5,6 +5,7 @@
  */
 package com.core.cryptolib.components;
 
+import com.core.cryptolib.enums.TypeEnum;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -55,6 +56,15 @@ public class Settings {
 
         st.setKey(key);
         st.setValue(value);
+
+    }
+    
+      public void put(String key, String value, TypeEnum type) {
+        SettingObject st = this.get(key);
+
+        st.setKey(key);
+        st.setValue(value);
+        st.setType(type);
 
     }
 

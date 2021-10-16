@@ -5,6 +5,7 @@
  */
 package com.core.cryptolib.components;
 
+import com.core.cryptolib.enums.TypeEnum;
 import java.io.Serializable;
 
 /**
@@ -15,15 +16,24 @@ public class SettingObject implements Serializable {
 
     String key;
     String value;
-    
-    public SettingObject(){
+    TypeEnum type;
+
+    public SettingObject() {
         this.key = "";
         this.value = "";
+        this.type = TypeEnum.String;
     }
 
     public SettingObject(String key, String value) {
         this.key = key;
         this.value = value;
+        this.type = TypeEnum.String;
+    }
+
+    public SettingObject(String key, String value, TypeEnum type) {
+        this.key = key;
+        this.value = value;
+        this.type = type == null ? TypeEnum.String : type;
     }
 
     public String getKey() {
@@ -41,6 +51,13 @@ public class SettingObject implements Serializable {
     public void setValue(String value) {
         this.value = value;
     }
-    
-    
+
+    public TypeEnum getType() {
+        return type;
+    }
+
+    public void setType(TypeEnum type) {
+        this.type = type;
+    }
+
 }

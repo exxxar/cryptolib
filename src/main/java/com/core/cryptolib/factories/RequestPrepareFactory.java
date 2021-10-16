@@ -5,7 +5,6 @@
  */
 package com.core.cryptolib.factories;
 
-
 import com.core.cryptolib.components.Settings;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,6 +30,46 @@ public class RequestPrepareFactory extends JSONObject {
 
     public RequestPrepareFactory(Settings settings) {
         this.settings = settings;
+    }
+
+    public JSONObject getToken(String url, String login, String password, Optional<String> apiVersion) throws IOException, MalformedURLException, ParseException {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json; utf-8");
+
+        JSONObject params = new JSONObject();
+        params.put("email", login);
+        params.put("password", password);
+
+        if (apiVersion.isPresent()) {
+            headers.put("X-API-VERSION", apiVersion.get());
+        }
+        headers.put("Accept", "application/json");
+
+        return execute("POST", url,
+                Optional.of(params),
+                Optional.of(headers)
+        );
+    }
+
+    public JSONObject jsonGetWithAuth(String url, String token, String apiVersion) throws IOException, MalformedURLException, ParseException {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Content-Type", "application/json; utf-8");
+
+        headers.put("Authorization", "Bearer " + token);
+
+        if (apiVersion != null) {
+            headers.put("X-API-VERSION", apiVersion);
+        }
+
+        headers.put("Accept", "application/json");
+
+        System.out.println(headers);
+
+        return execute("GET", url,
+                Optional.ofNullable(new JSONObject()),
+                Optional.of(headers)
+        );
+
     }
 
     public JSONObject jsonGet(String url, Optional<String> apiVersion) throws IOException, MalformedURLException, ParseException {
@@ -110,6 +149,10 @@ public class RequestPrepareFactory extends JSONObject {
 
         URL url = new URL(urlName);
 
+        System.out.println("url=>" + urlName + " method=>" + method);
+        
+         System.out.println("headers=>" + headers.get().entrySet());
+
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         con.setRequestMethod(method);
 
@@ -145,6 +188,8 @@ public class RequestPrepareFactory extends JSONObject {
             while ((responseLine = br.readLine()) != null) {
 
                 response.append(responseLine.trim());
+
+                System.out.println("resp=>" + responseLine.trim());
             }
 
             con.getInputStream().close();

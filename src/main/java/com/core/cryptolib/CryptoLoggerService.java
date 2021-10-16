@@ -5,6 +5,9 @@
  */
 package com.core.cryptolib;
 
+import com.pengrad.telegrambot.TelegramBot;
+import com.pengrad.telegrambot.request.SendMessage;
+import com.pengrad.telegrambot.response.SendResponse;
 import java.util.Date;
 import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
@@ -15,8 +18,6 @@ import org.json.simple.JSONObject;
  */
 public class CryptoLoggerService {
 
-
-
     protected String application;
     protected String className;
     protected Logger logger;
@@ -24,7 +25,7 @@ public class CryptoLoggerService {
 
     public CryptoLoggerService(String application, String className, Logger log) {
         this.isDebug = true;
-        this.logger =  log;
+        this.logger = log;
         this.application = application;
         this.className = className;
     }
@@ -43,6 +44,10 @@ public class CryptoLoggerService {
             obj.put("content", payload);
         }
         obj.put("created_at", (new Date()).getTime());
+
+//        TelegramBot bot = new TelegramBot("1910811149:AAFUKo7SSFd6kOmGz3ue5SMIEWWckOk9h9s");
+//
+//        bot.execute(new SendMessage("-1001276040856", obj.toJSONString()));
         return obj.toJSONString();
     }
 
@@ -53,6 +58,7 @@ public class CryptoLoggerService {
         }
 
         try {
+
             logger.info(prepare(message, payload, "info"));
         } catch (Exception e) {
 

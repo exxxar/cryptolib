@@ -9,6 +9,20 @@ package com.core.cryptolib.enums;
  *
  * @author SAMS
  */
-public enum ObjectType {
-    TRUSTED_DEVICE, COMPANY, USER, SETTING, MULTI_CONNECTION
+public enum TypeEnum {
+    String(0),
+    Boolean(1),
+    Integer(2),
+    Double(3),
+    JSON(4);
+
+    int value;
+
+    TypeEnum(int value) {
+        this.value = value;
+    }
+
+    public int getValue() {
+        return this.value;
+    }
 }

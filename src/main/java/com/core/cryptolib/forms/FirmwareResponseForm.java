@@ -55,10 +55,10 @@ public class FirmwareResponseForm {
     public JSONObject toJSON() {
         JSONObject tmp = new JSONObject();
 
-        tmp.put("order", order);
-        tmp.put("offset", order);
-        tmp.put("filePart", order);
-        tmp.put("checksum", order);
+        tmp.put("order", order.getValue());
+        tmp.put("offset", offset);
+        tmp.put("filePart", filePart);
+        tmp.put("checksum", checksum);
 
         return tmp;
     }

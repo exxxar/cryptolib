@@ -8,6 +8,7 @@ package com.core.cryptolib.forms;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Null;
 import javax.validation.constraints.Size;
 
 /**
@@ -22,7 +23,7 @@ public class TrustedDeviceForm implements Serializable {
     @Size(min = 5, max = 36)
     private String devicePublicId;
 
-    @NotNull
+    @Null
     @Size(min = 5, max = 36)
     private String deviceResetKey;
 
@@ -38,12 +39,18 @@ public class TrustedDeviceForm implements Serializable {
     @Size(min = 5, max = 36)
     private String deviceActualKey;
 
-    @NotNull
+    @Null
     @Size(min = 5, max = 36)
     private String deviceOldKey;
 
     @NotNull
-    private boolean active = true;
+    private boolean active;
+
+    private boolean acceptAutoReset;
+
+    private boolean resetTry;
+    
+    private boolean multiconnect;
 
     @NotNull
     @Size(min = 5, max = 255)
@@ -52,7 +59,6 @@ public class TrustedDeviceForm implements Serializable {
     @NotNull
     @Size(min = 1, max = 255)
     private String currentFirmware;
-    
 
     @NotNull
     private int attempts = 0;
@@ -172,6 +178,9 @@ public class TrustedDeviceForm implements Serializable {
         this.description = description;
         this.attempts = 0;
         this.currentFirmware = "";
+        this.acceptAutoReset = false;
+        this.resetTry = false;
+        this.multiconnect = false;
     }
 
     public TrustedDeviceForm() {
@@ -183,6 +192,30 @@ public class TrustedDeviceForm implements Serializable {
 
     public void setDeviceFactoryKey(String deviceFactoryKey) {
         this.deviceFactoryKey = deviceFactoryKey;
+    }
+
+    public boolean isAcceptAutoReset() {
+        return acceptAutoReset;
+    }
+
+    public void setAcceptAutoReset(boolean acceptAutoReset) {
+        this.acceptAutoReset = acceptAutoReset;
+    }
+
+    public boolean isResetTry() {
+        return resetTry;
+    }
+
+    public void setResetTry(boolean resetTry) {
+        this.resetTry = resetTry;
+    }
+
+    public boolean isMulticonnect() {
+        return multiconnect;
+    }
+
+    public void setMulticonnect(boolean multiconnect) {
+        this.multiconnect = multiconnect;
     }
 
     
